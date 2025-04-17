@@ -36,8 +36,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# --- Pydantic Models (DEFINED BEFORE USAGE) ---
-
 # Represents the 'data' part of a ReactFlow node
 class WorkflowNodeData(BaseModel):
     label: str
