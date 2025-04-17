@@ -1,0 +1,62 @@
+{
+    "HRRecruitingAssistant": {
+        "name": "HRRecruitingAssistant",
+        "description": "",
+        "method_name": "run",
+        "nodes": [
+            {
+                "id": "auth_agent-login-1744886998522",
+                "type": "dimensions",
+                "position": {
+                    "x": 229.17050170898438,
+                    "y": 240.76515102386475
+                },
+                "data": {
+                    "label": "auth_agent.login",
+                    "agent": "auth_agent",
+                    "method": "login"
+                }
+            },
+            {
+                "id": "webservice_agent-search_candidates-1744887004949",
+                "type": "dimensions",
+                "position": {
+                    "x": 306.75575256347656,
+                    "y": 105.14772653579712
+                },
+                "data": {
+                    "label": "webservice_agent.search_candidates",
+                    "agent": "webservice_agent",
+                    "method": "search_candidates"
+                }
+            },
+            {
+                "id": "dbservice_agent-create_record-1744887009747",
+                "type": "dimensions",
+                "position": {
+                    "x": 409.75575256347656,
+                    "y": 38.64772653579712
+                },
+                "data": {
+                    "label": "dbservice_agent.create_record",
+                    "agent": "dbservice_agent",
+                    "method": "create_record"
+                }
+            }
+        ],
+        "edges": [
+            {
+                "id": "reactflow__edge-auth_agent-login-1744886998522-webservice_agent-search_candidates-1744887004949",
+                "source": "auth_agent-login-1744886998522",
+                "target": "webservice_agent-search_candidates-1744887004949",
+                "type": "smoothstep"
+            },
+            {
+                "id": "reactflow__edge-webservice_agent-search_candidates-1744887004949-dbservice_agent-create_record-1744887009747",
+                "source": "webservice_agent-search_candidates-1744887004949",
+                "target": "dbservice_agent-create_record-1744887009747",
+                "type": "smoothstep"
+            }
+        ]
+    }
+}

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react'; // Added useEffect
 import axios from 'axios';
 
 // Receive nodes and edges as props from App.jsx
@@ -14,6 +14,14 @@ export default function RunPanel({ nodes, edges }) {
   const [isRunning, setIsRunning] = useState(false);
   const [runStatus, setRunStatus] = useState(''); // e.g., 'completed', 'failed'
 
+  // --- State for Saving Workflow ---
+  const [compositeName, setCompositeName] = useState('');
+  const [compositeDescription, setCompositeDescription] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveMessage, setSaveMessage] = useState('');
+  const [saveError, setSaveError] = useState('');
+  // --- End State for Saving ---
+
   const handleRun = async () => {
     // Prevent running if already running
     if (isRunning) return;
@@ -23,7 +31,7 @@ export default function RunPanel({ nodes, edges }) {
     setRunStatus('Running...');
 
     // Prepare the payload from current nodes, edges, and runtime inputs
-    // Map ReactFlow nodes to the structure expected by the backend
+    // Map ReactFlow nodes to the structure expected by the backend    
     const backendNodes = nodes.map(node => ({
         id: node.id,
         type: node.type,
@@ -91,7 +99,62 @@ export default function RunPanel({ nodes, edges }) {
     }
   };
 
+  // --- Handler for Saving Workflow ---
+  const handleSaveWorkflow = async () => {
+      if (isSaving || !compositeName.trim()) {
+          setSaveError("Please provide a name for the composite agent.");
+          return;
+      }
+      if (nodes.length === 0) {
+           setSaveError("Cannot save an empty workflow.");
+           return;
+      }
+
+      setIsSaving(true);
+      setSaveMessage('');
+      setSaveError('');
+
+      // Prepare payload for saving (similar to running, but without initial_inputs)
+      const backendNodes = nodes.map(node => ({ id: node.id, type: node.type, position: node.position, data: { label: node.data.label, agent: node.data.agent, method: node.data.method } }));
+      const backendEdges = edges.map(edge => ({ id: edge.id, source: edge.source, target: edge.target, type: edge.type }));
+
+      const savePayload = {
+          name: compositeName.trim(),
+          description: compositeDescription.trim(),
+          nodes: backendNodes,
+          edges: backendEdges,
+      };
+
+      console.log("Sending save request:", savePayload);
+
+      try {
+          const res = await axios.post('/api/register_composite', savePayload);
+          setSaveMessage(res.data.message || "Workflow saved successfully!");
+          setCompositeName(''); // Clear fields on success
+          setCompositeDescription('');
+          // Optionally trigger agent list refresh here
+          // fetchAgents(); // If passed down or from context
+          alert("Workflow saved! Please refresh the Agents panel to see it."); // Simple notification
+      } catch (err) {
+           console.error("Failed to save workflow:", err);
+           let errorMsg = 'Failed to save workflow.';
+             if (err.response && err.response.data && err.response.data.detail) {
+                 errorMsg += ` Error: ${err.response.data.detail}`;
+             } else if (err.request) {
+                 errorMsg = 'Network Error: Could not reach the backend.';
+             } else {
+                 errorMsg = `Error: ${err.message}`;
+             }
+            setSaveError(errorMsg);
+            setSaveMessage('');
+        } finally {
+            setIsSaving(false);
+      }
+  };
+  // --- End Handler for Saving ---
+
   // Helper to format log output nicely
+  
   const formatLogOutput = (output) => {
      if (typeof output === 'object' && output !== null) {
          // Special handling for errors
@@ -107,11 +170,12 @@ export default function RunPanel({ nodes, edges }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
       {/* Runtime Inputs Form */}
-      <div style={{ marginBottom: '1rem', borderBottom: '1px solid #eee', paddingBottom: '1rem' }}>
+      <div style={{ marginBottom: '1rem', borderBottom: '1px solid #eee', paddingBottom: '1rem' }}>     
         <h4>Runtime Inputs</h4>
+        {/* ... (keep existing input fields for username, password, title, skills) ... */}        
         <div style={{ display: 'grid', gridTemplateColumns: '100px 1fr', gap: '5px', alignItems: 'center' }}>
           <label htmlFor="username">Username:</label>
-          <input id="username" placeholder="Username" value={username} onChange={(e) => setUsername(e.target.value)} style={{ width: '95%' }}/>
+          <input id="username" placeholder="Username" value={username} onChange={(e) => setUsername(e.target.value)} style={{ width: '95%' }}/>          
 
           <label htmlFor="password">Password:</label>
           <input id="password" placeholder="Password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} style={{ width: '95%' }}/>
@@ -127,6 +191,36 @@ export default function RunPanel({ nodes, edges }) {
         </button>
         {runStatus && <p style={{ marginTop: '5px', fontWeight: 'bold' }}>Status: {runStatus}</p>}
       </div>
+
+      {/* --- Section to Save Workflow --- */}
+      <div style={{ marginBottom: '1rem', borderBottom: '1px solid #eee', paddingBottom: '1rem' }}>
+            <h4>Save Workflow as Agent</h4>
+            <div style={{ display: 'grid', gridTemplateColumns: '100px 1fr', gap: '5px', alignItems: 'center' }}>
+                 <label htmlFor="compName">Agent Name*:</label>
+                 <input
+                     id="compName"
+                     placeholder="e.g., HRRecruitingWorkflow"
+                     value={compositeName}
+                     onChange={(e) => setCompositeName(e.target.value)}
+                     style={{ width: '95%' }}
+                     required
+                 />
+                 <label htmlFor="compDesc">Description:</label>
+                 <input
+                     id="compDesc"
+                     placeholder="Optional description"
+                     value={compositeDescription}
+                     onChange={(e) => setCompositeDescription(e.target.value)}
+                     style={{ width: '95%' }}
+                 />
+            </div>
+            <button onClick={handleSaveWorkflow} disabled={isSaving || nodes.length === 0} style={{ marginTop: '10px', padding: '8px 15px', cursor: (isSaving || nodes.length === 0) ? 'not-allowed' : 'pointer' }}>
+                 {isSaving ? 'Saving...' : 'Save Workflow'}
+            </button>
+            {saveMessage && <p style={{ color: 'green', marginTop: '5px' }}>{saveMessage}</p>}
+            {saveError && <p style={{ color: 'red', marginTop: '5px' }}>{saveError}</p>}
+       </div>
+       {/* --- End Section --- */}
 
       {/* Execution Logs Area */}
       <div style={{ flexGrow: 1, overflowY: 'auto' }}>
