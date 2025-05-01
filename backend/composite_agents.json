@@ -58,5 +58,125 @@
                 "type": "smoothstep"
             }
         ]
+    },
+    "hrassist": {
+        "name": "hrassist",
+        "description": "example agent",
+        "method_name": "run",
+        "nodes": [
+            {
+                "id": "auth_agent-login-1746114338328",
+                "type": "dimensions",
+                "position": {
+                    "x": 89.73330688476562,
+                    "y": 273.0
+                },
+                "data": {
+                    "label": "auth_agent.login",
+                    "agent": "auth_agent",
+                    "method": "login"
+                }
+            },
+            {
+                "id": "webservice_agent-search_candidates-1746114341414",
+                "type": "dimensions",
+                "position": {
+                    "x": 189.34996032714844,
+                    "y": 147.75
+                },
+                "data": {
+                    "label": "webservice_agent.search_candidates",
+                    "agent": "webservice_agent",
+                    "method": "search_candidates"
+                }
+            },
+            {
+                "id": "dbservice_agent-create_record-1746114353251",
+                "type": "dimensions",
+                "position": {
+                    "x": 357.34996032714844,
+                    "y": 327.75
+                },
+                "data": {
+                    "label": "dbservice_agent.create_record",
+                    "agent": "dbservice_agent",
+                    "method": "create_record"
+                }
+            }
+        ],
+        "edges": [
+            {
+                "id": "reactflow__edge-auth_agent-login-1746114338328-webservice_agent-search_candidates-1746114341414",
+                "source": "auth_agent-login-1746114338328",
+                "target": "webservice_agent-search_candidates-1746114341414",
+                "type": "smoothstep"
+            },
+            {
+                "id": "reactflow__edge-webservice_agent-search_candidates-1746114341414-dbservice_agent-create_record-1746114353251",
+                "source": "webservice_agent-search_candidates-1746114341414",
+                "target": "dbservice_agent-create_record-1746114353251",
+                "type": "smoothstep"
+            }
+        ]
+    },
+    "logagent": {
+        "name": "logagent",
+        "description": "",
+        "method_name": "run",
+        "nodes": [
+            {
+                "id": "auth_agent-login-1746114525976",
+                "type": "dimensions",
+                "position": {
+                    "x": 79.73330688476562,
+                    "y": 202.0
+                },
+                "data": {
+                    "label": "auth_agent.login",
+                    "agent": "auth_agent",
+                    "method": "login"
+                }
+            },
+            {
+                "id": "log_ingest_agent-fetch_logs-1746114531292",
+                "type": "dimensions",
+                "position": {
+                    "x": 187.84996032714844,
+                    "y": 93.25
+                },
+                "data": {
+                    "label": "log_ingest_agent.fetch_logs",
+                    "agent": "log_ingest_agent",
+                    "method": "fetch_logs"
+                }
+            },
+            {
+                "id": "log_router_agent-manual_pull_insert-1746114537827",
+                "type": "dimensions",
+                "position": {
+                    "x": 311.34996032714844,
+                    "y": 288.75
+                },
+                "data": {
+                    "label": "log_router_agent.manual_pull_insert",
+                    "agent": "log_router_agent",
+                    "method": "manual_pull_insert"
+                }
+            }
+        ],
+        "edges": [
+            {
+                "id": "reactflow__edge-auth_agent-login-1746114525976-log_ingest_agent-fetch_logs-1746114531292",
+                "source": "auth_agent-login-1746114525976",
+                "target": "log_ingest_agent-fetch_logs-1746114531292",
+                "type": "smoothstep"
+            },
+            {
+                "id": "reactflow__edge-log_ingest_agent-fetch_logs-1746114531292-log_router_agent-manual_pull_insert-1746114537827",
+                "source": "log_ingest_agent-fetch_logs-1746114531292",
+                "target": "log_router_agent-manual_pull_insert-1746114537827",
+                "type": "smoothstep"
+            }
+        ]
     }
 }

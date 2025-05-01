@@ -1,10 +1,156 @@
-
-
 # Design and Implementation of a Low-Code Visual Agent Workflow Platform
 
 ## Overview
 
 This platform allows users to **visually build agent workflows** with a drag-and-drop interface, connecting agents' methods as nodes in a flow. It provides a React-based **frontend** for designing workflows and a FastAPI **backend** for executing them. Users can compose sequences of “agent” method calls (from a marketplace/registry) without coding, define parameters via forms, and run the workflow to see step-by-step results. The system also supports saving a created workflow as a **composite agent** that can be reused in new workflows.
+
+```mermaid
+graph TD
+    %% ===== Styles (Keep Existing) =====
+    classDef UI fill:#CCE5FF,stroke:#2F80ED,stroke-width:1px
+    classDef Backend fill:#D1C4E9,stroke:#5E35B1,stroke-width:1px
+    classDef External fill:#FFF3E0,stroke:#F57C00,stroke-width:1px
+    classDef DB fill:#FFCDD2,stroke:#C62828,stroke-width:1px
+    classDef UserAction fill:#E8F5E9,stroke:#388E3C
+    classDef UIComp fill:#E0F7FA,stroke:#0097A7
+    classDef API fill:#FFF9C4,stroke:#FBC02D
+    classDef Func fill:#FCE4EC,stroke:#AD1457
+    classDef A2A stroke:#0288D1,stroke-width:2px,color:#0288D1,font-style:italic
+    classDef Internal stroke:#388E3C,stroke-width:1px,stroke-dasharray:3 3,color:#388E3C
+    classDef State fill:#F1F8E9,stroke:#7CB342
+
+    %% ===== Components =====
+    subgraph User [User Interaction]
+        U_Load[Load Page / Click Refresh Agents]:::UserAction
+        U_Drag[Drag Agent/Method]:::UserAction
+        U_Drop[Drop onto Canvas]:::UserAction
+        U_Connect[Draw Connection]:::UserAction
+        U_InputRun[Enter Dynamic Runtime Inputs]:::UserAction
+        U_ClickRun[Click 'Run Workflow']:::UserAction
+        U_InputSave[Enter Composite Name/Desc]:::UserAction
+        U_ClickSave[Click 'Save Workflow']:::UserAction
+    end
+
+    subgraph Frontend ["Browser UI (React/Vite)"]
+        direction LR
+        subgraph LeftPanel ["Left Panel (Agents)"]
+            LP_Comp[AgentsPanel.jsx]:::UIComp
+            %% LP_State removed - state lifted
+        end
+        subgraph MiddlePanel ["Middle Panel (Builder)"]
+            MP_Comp[WorkflowBuilder.jsx]:::UIComp
+            MP_Lib[ReactFlow Canvas]:::UI
+        end
+        subgraph RightPanel ["Right Panel (Run/Save)"]
+            RP_Comp[RunPanel.jsx]:::UIComp
+            RP_StateRun[Logs / Run Status State]:::UI
+            RP_StateSave[Save Status / Message State]:::UI
+            RP_StateDynInputs["Dynamic Inputs State (dynamicInputs, inputValues)"]:::UI
+        end
+        AppComp["App.jsx (Manages Nodes/Edges/Agents State)"]:::UIComp
+    end
+
+    subgraph Backend ["Backend Server (FastAPI/Python)"]
+        %% Backend components remain the same
+        API_Agents["/api/agents GET"]:::API
+        API_Run["/api/run_workflow POST"]:::API
+        API_Save["/api/register_composite POST"]:::API
+        FN_Execute["execute_workflow_graph()"]:::Func
+        FN_LoadComp["load_composite_agents()"]:::Func
+        FN_SaveComp["save_composite_agents()"]:::Func
+        FN_LoadBase["_get_base_agents_from_registry()"]:::Func
+        FN_A2ACall["a2a_call()"]:::Func
+        Cache["Agent Cache (In-Memory)"]:::Backend
+    end
+
+    subgraph ExternalSystems ["External Systems / Storage"]
+         %% External systems remain the same
+        Ext_Registry[A2A Registry Service]:::External
+        Ext_Composites["Composite Store (DB/File)"]:::DB
+        Ext_AgentA[Base Agent A Service]:::External
+        Ext_AgentB[Base Agent B Service]:::External
+    end
+
+    %% ===== Global State Management & Props Drilling =====
+    AppComp -- "Holds/Updates" --> State_NodesEdges("Nodes/Edges State"):::State
+    AppComp -- "Holds/Updates" --> State_Agents("Agent List State (agents, loading, error)"):::State
+
+    State_NodesEdges -- "Passed as Props" --> MP_Comp
+    State_NodesEdges -- "Passed as Props" --> RP_Comp
+
+    AppComp -- "Passes Agents Props (list, loading, error, onRefresh)" --> LP_Comp
+    AppComp -- "Passes Agents Prop (list)" --> RP_Comp
+
+    %% RP_Comp manages its internal dynamic input state
+    RP_Comp -- "Updates/Reads" --> RP_StateDynInputs
+
+
+    %% ===== Flow 1: Load Agents (Revised) =====
+    U_Load -- "Triggers fetchAgents() in" --> AppComp
+    LP_Comp -- "Triggers onRefresh() --> fetchAgents() in" --> AppComp
+    AppComp -- "axios.get('/api/agents')" --> API_Agents
+    API_Agents -- "Calls load base agents" --> FN_LoadBase
+    FN_LoadBase -- "A2A Call" --> Ext_Registry:::A2A
+    Ext_Registry -- "Base Agent List" --> FN_LoadBase
+    API_Agents -- "Calls load composites" --> FN_LoadComp
+    FN_LoadComp -- "Read Store" --> Ext_Composites:::Internal
+    Ext_Composites -- "Definitions" --> FN_LoadComp
+    API_Agents -- "Merge & Cache Results" --> Cache:::Internal
+    API_Agents -- "Merged Agent List Response" --> AppComp
+    AppComp -- "Updates State" --> State_Agents
+    %% AppComp passes props to LP_Comp (covered in props drilling)
+    LP_Comp -- "(React renders list from props)" --> LP_Comp
+
+    %% ===== Flow 2: Build Workflow (Unchanged) =====
+    U_Drag -- "On Agent in" --> LP_Comp
+    LP_Comp -- "onDragStart()" --> U_Drop
+    U_Drop -- "Onto" --> MP_Comp
+    MP_Comp -- "onDrop() creates node" --> AppComp
+    AppComp -- "Updates" --> State_NodesEdges
+    State_NodesEdges -- "(ReactFlow renders node)" --> MP_Lib
+    U_Connect -- "On Handles in" --> MP_Lib
+    MP_Lib -- "onConnect() creates edge" --> AppComp
+    AppComp -- "Updates" --> State_NodesEdges
+    State_NodesEdges -- "(ReactFlow renders edge)" --> MP_Lib
+
+    %% ===== Flow 3: Run Workflow (Revised for Dynamic Inputs) =====
+    %% RP_Comp uses Nodes/Edges/Agents props to calculate dynamic inputs
+    State_NodesEdges -- "Used by (via props)" --> RP_Comp
+    State_Agents -- "Used by (via props)" --> RP_Comp
+
+    U_InputRun -- "Enters Data into Dynamic Inputs" --> RP_Comp
+    RP_Comp -- "Updates" --> RP_StateDynInputs
+
+    U_ClickRun -- "Triggers" --> RP_Comp
+    RP_Comp -- "handleRun() reads Nodes/Edges & RP_StateDynInputs" --> RP_Comp
+    RP_Comp -- "axios.post('/api/run_workflow')" --> API_Run
+    API_Run -- "Request Payload (w/ dynamic initial_inputs)" --> J[Parse Request]
+    J --> FN_Execute
+    FN_Execute -- "Uses Cache + Runs Logic" --> K{"Internal Execution / A2A Calls"}
+    K -- "Calls" --> FN_A2ACall
+    FN_A2ACall -- "A2A Call" --> Ext_AgentA:::A2A
+    Ext_AgentA -- "Response" --> FN_A2ACall
+    K -- "(Composite Execution)" --> FN_Execute:::Internal
+    K -- "Logs & Final State" --> API_Run
+    API_Run -- "WorkflowExecutionResponse" --> RP_Comp
+    RP_Comp -- "Updates State" --> RP_StateRun
+    RP_StateRun -- "(React renders logs)" --> RP_Comp
+
+    %% ===== Flow 4: Save Workflow (Unchanged) =====
+    U_InputSave -- "Enters Data" --> RP_Comp
+    U_ClickSave -- "Triggers" --> RP_Comp
+    RP_Comp -- "handleSaveWorkflow() reads Nodes/Edges/Name/Desc" --> RP_Comp
+    RP_Comp -- "axios.post('/api/register_composite')" --> API_Save
+    API_Save -- "Request Payload" --> L[Parse & Validate]
+    L --> FN_SaveComp
+    FN_SaveComp -- "Write to Store" --> Ext_Composites:::Internal
+    Ext_Composites -- "Confirm Write" --> FN_SaveComp
+    FN_SaveComp -- "Updates Cache" --> Cache:::Internal
+    API_Save -- "Success/Error Response" --> RP_Comp
+    RP_Comp -- "Updates State" --> RP_StateSave
+    RP_StateSave -- "(React renders message)" --> RP_Comp
+
+```
 
 ## Frontend: Visual Workflow Builder (React + ReactFlow)
 
@@ -26,7 +172,6 @@ The frontend is built with **React** (TypeScript) and utilizes **ReactFlow** for
 * Users can draw **connections (edges)** between nodes to define the execution sequence. In the flow, a directed edge from Node A to Node B means “execute A before B, and pass A’s results into B”. Nodes and edges form a directed acyclic graph (DAG) representing the workflow logic [getzep.com](https://www.getzep.com/ai-agents/langchain-agents-langgraph#:~:text=Nodes%20and%20Edges%3A%20Nodes%20represent,data%20and%20control%20between%20nodes).
 * ReactFlow handles edge creation via user dragging from a node’s output handle to another node’s input handle. Each node type can be configured with output and input connectors. We can also enforce no cyclic connections (prevent loops) by checking connections (ReactFlow provides an example to **prevent cycles** in the graph).
 * The **start node** is the one with no incoming edges (or the user can explicitly mark a start). The flow can have branching if multiple edges originate from one node, but typically execution will follow the drawn arrows sequentially or in parallel if branches diverge.
-
 
 ## How to Test It End-to-End
 
@@ -69,3 +214,4 @@ Would you like me to:
 
 * Show you how to add this 3rd node in the UI version?
 * Or fully integrate it and drop updated code?
+*

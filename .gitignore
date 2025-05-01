@@ -15,3 +15,6 @@ env/
 
 # Ignore node_modules (if applicable)
 node_modules/
+
+*.bkp
+*.dtmp

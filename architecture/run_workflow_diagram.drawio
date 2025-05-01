@@ -1,6 +1,6 @@
-<mxfile host="Electron" modified="2025-04-17T14:35:58.033Z" agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) draw.io/21.6.8 Chrome/114.0.5735.289 Electron/25.5.0 Safari/537.36" etag="U4Qrg4I2Oqvn8g0L350X" version="21.6.8" type="device">
+<mxfile host="Electron" modified="2025-04-18T13:04:19.407Z" agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) draw.io/21.6.8 Chrome/114.0.5735.289 Electron/25.5.0 Safari/537.36" etag="Aenj3LJP2ejVILmAZp9Z" version="21.6.8" type="device">
   <diagram name="Page-1" id="cJ6hXq5RuqZ008whGkWY">
-    <mxGraphModel dx="1338" dy="820" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
+    <mxGraphModel dx="1195" dy="697" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
@@ -73,8 +73,15 @@
         <mxCell id="3zWuM-wNl1nH80lP1Bes-23" value="axios.post(&#39;/api/run_workflow&#39;, payload)" style="whiteSpace=wrap;strokeWidth=2;" vertex="1" parent="1">
           <mxGeometry x="448" y="448" width="307" height="34" as="geometry" />
         </mxCell>
+        <mxCell id="3zWuM-wNl1nH80lP1Bes-53" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="3zWuM-wNl1nH80lP1Bes-24" target="3zWuM-wNl1nH80lP1Bes-5">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="602" y="910" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
         <mxCell id="3zWuM-wNl1nH80lP1Bes-24" value="Network Request (via Vite Proxy)" style="rhombus;strokeWidth=2;whiteSpace=wrap;" vertex="1" parent="1">
-          <mxGeometry x="459" y="532" width="285" height="285" as="geometry" />
+          <mxGeometry x="459" y="580" width="285" height="285" as="geometry" />
         </mxCell>
         <mxCell id="3zWuM-wNl1nH80lP1Bes-25" value="React Renders Updated UI" style="whiteSpace=wrap;strokeWidth=2;" vertex="1" parent="1">
           <mxGeometry x="501" y="2157" width="201" height="34" as="geometry" />
@@ -100,7 +107,7 @@
             <Array as="points" />
           </mxGeometry>
         </mxCell>
-        <mxCell id="3zWuM-wNl1nH80lP1Bes-31" value="" style="curved=1;startArrow=none;endArrow=block;exitX=0.500483509771987;exitY=1.0135569852941178;entryX=0.5005208333333333;entryY=0.0016173245614035088;rounded=0;" edge="1" parent="1" source="3zWuM-wNl1nH80lP1Bes-23" target="3zWuM-wNl1nH80lP1Bes-24">
+        <mxCell id="3zWuM-wNl1nH80lP1Bes-31" value="" style="curved=1;startArrow=none;endArrow=block;exitX=0.500483509771987;exitY=1.0135569852941178;entryX=0.5;entryY=0;rounded=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="3zWuM-wNl1nH80lP1Bes-23" target="3zWuM-wNl1nH80lP1Bes-24">
           <mxGeometry relative="1" as="geometry">
             <Array as="points" />
           </mxGeometry>
@@ -113,13 +120,6 @@
         <mxCell id="3zWuM-wNl1nH80lP1Bes-33" value="" style="curved=1;startArrow=none;endArrow=block;exitX=0.5010237068965517;exitY=0.9908088235294118;entryX=0.5006316489361702;entryY=-0.009191176470588236;rounded=0;" edge="1" parent="1" source="3zWuM-wNl1nH80lP1Bes-27" target="3zWuM-wNl1nH80lP1Bes-26">
           <mxGeometry relative="1" as="geometry">
             <Array as="points" />
-          </mxGeometry>
-        </mxCell>
-        <mxCell id="3zWuM-wNl1nH80lP1Bes-34" value="" style="curved=1;startArrow=none;endArrow=block;exitX=0.5005208333333333;exitY=1.002467105263158;entryX=-0.0016232926324503312;entryY=0.2511180112019247;rounded=0;" edge="1" parent="1" source="3zWuM-wNl1nH80lP1Bes-24" target="3zWuM-wNl1nH80lP1Bes-5">
-          <mxGeometry relative="1" as="geometry">
-            <Array as="points">
-              <mxPoint x="602" y="868" />
-            </Array>
           </mxGeometry>
         </mxCell>
         <mxCell id="3zWuM-wNl1nH80lP1Bes-35" value="" style="curved=1;startArrow=none;endArrow=block;exitX=0.4976911734271523;exitY=0.9912683823529411;entryX=0.49897789831606215;entryY=-0.008731617647058824;rounded=0;" edge="1" parent="1" source="3zWuM-wNl1nH80lP1Bes-5" target="3zWuM-wNl1nH80lP1Bes-6">
