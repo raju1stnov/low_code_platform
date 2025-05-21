@@ -18,137 +18,164 @@ graph TD
     classDef A2A stroke:#0288D1,stroke-width:2px,color:#0288D1,font-style:italic
     classDef Internal stroke:#388E3C,stroke-width:1px,stroke-dasharray:3 3,color:#388E3C
     classDef State fill:#F1F8E9,stroke:#7CB342
+    classDef LLMAgent fill:#E1F5FE,stroke:#0277BD
 
     %% ===== Components =====
     subgraph User [User Interaction]
-        U_Load[Load Page / Click Refresh Agents]:::UserAction
+        U_Load:::UserAction
         U_Drag[Drag Agent/Method]:::UserAction
         U_Drop[Drop onto Canvas]:::UserAction
         U_Connect[Draw Connection]:::UserAction
-        U_InputRun[Enter Dynamic Runtime Inputs]:::UserAction
-        U_ClickRun[Click 'Run Workflow']:::UserAction
+        U_InputRun:::UserAction
+        U_ClickRun:::UserAction
         U_InputSave[Enter Composite Name/Desc]:::UserAction
-        U_ClickSave[Click 'Save Workflow']:::UserAction
+        U_ClickSave:::UserAction
+        U_SelectSink:::UserAction
+        U_EnterChatQuery[Enter Chat Query]:::UserAction
     end
 
-    subgraph Frontend ["Browser UI (React/Vite)"]
+    subgraph Frontend
         direction LR
         subgraph LeftPanel ["Left Panel (Agents)"]
             LP_Comp[AgentsPanel.jsx]:::UIComp
-            %% LP_State removed - state lifted
         end
-        subgraph MiddlePanel ["Middle Panel (Builder)"]
-            MP_Comp[WorkflowBuilder.jsx]:::UIComp
-            MP_Lib[ReactFlow Canvas]:::UI
+        subgraph MiddlePanel
+            MP_Comp:::UIComp
+            MP_Lib:::UI
         end
-        subgraph RightPanel ["Right Panel (Run/Save)"]
-            RP_Comp[RunPanel.jsx]:::UIComp
-            RP_StateRun[Logs / Run Status State]:::UI
-            RP_StateSave[Save Status / Message State]:::UI
-            RP_StateDynInputs["Dynamic Inputs State (dynamicInputs, inputValues)"]:::UI
+        subgraph RightPanel
+            RP_Comp:::UIComp
+            RP_StateRun:::UI
+            RP_StateSave:::UI
+            RP_StateDynInputs:::UI
+            ChatPanelUI[ChatPanel.jsx]:::UIComp
+            ChatPanelState:::UI
         end
-        AppComp["App.jsx (Manages Nodes/Edges/Agents State)"]:::UIComp
+        AppComp:::UIComp
     end
 
-    subgraph Backend ["Backend Server (FastAPI/Python)"]
-        %% Backend components remain the same
-        API_Agents["/api/agents GET"]:::API
-        API_Run["/api/run_workflow POST"]:::API
-        API_Save["/api/register_composite POST"]:::API
+    subgraph Backend
+        API_Agents:::API
+        API_Run:::API
+        API_Save:::API
+        API_Sinks:::API
+        API_Chat:::API
         FN_Execute["execute_workflow_graph()"]:::Func
         FN_LoadComp["load_composite_agents()"]:::Func
         FN_SaveComp["save_composite_agents()"]:::Func
         FN_LoadBase["_get_base_agents_from_registry()"]:::Func
         FN_A2ACall["a2a_call()"]:::Func
+        FN_GetSinkDetails:::Func
         Cache["Agent Cache (In-Memory)"]:::Backend
     end
 
-    subgraph ExternalSystems ["External Systems / Storage"]
-         %% External systems remain the same
-        Ext_Registry[A2A Registry Service]:::External
-        Ext_Composites["Composite Store (DB/File)"]:::DB
-        Ext_AgentA[Base Agent A Service]:::External
-        Ext_AgentB[Base Agent B Service]:::External
+    subgraph ExternalSystems
+        %% Existing Base Agents & Storage
+        Ext_Registry:::External
+        Ext_Composites:::DB
+        Ext_AgentA:::External
+        Ext_AgentB:::External
+        Ext_ExecutorAgent:::External
+
+        %% New Sink Registry Components
+        Ext_SinkRegistryAgent:::LLMAgent
+        Ext_SinkRegistryStore:::DB
+
+        %% LLM/Support Agents
+        Ext_ChatAgent["ChatAgent<br/>(platform_setup_repo)"]:::LLMAgent
+        Ext_QueryPlannerAgent["QueryPlannerAgent<br/>(platform_setup_repo)"]:::LLMAgent
+        Ext_AnalyticsAgent["AnalyticsAgent<br/>(platform_setup_repo)"]:::LLMAgent
+
+        %% Actual Data Sinks
+        Ext_DataSink_HR:::DB
+        Ext_DataSink_Logs:::DB
     end
 
-    %% ===== Global State Management & Props Drilling =====
+    %% ===== Global State Management & Props Drilling (Existing) =====
     AppComp -- "Holds/Updates" --> State_NodesEdges("Nodes/Edges State"):::State
-    AppComp -- "Holds/Updates" --> State_Agents("Agent List State (agents, loading, error)"):::State
-
-    State_NodesEdges -- "Passed as Props" --> MP_Comp
-    State_NodesEdges -- "Passed as Props" --> RP_Comp
-
-    AppComp -- "Passes Agents Props (list, loading, error, onRefresh)" --> LP_Comp
-    AppComp -- "Passes Agents Prop (list)" --> RP_Comp
-
-    %% RP_Comp manages its internal dynamic input state
+    AppComp -- "Holds/Updates" --> State_Agents("Agent List State"):::State
+    State_NodesEdges -- "Props" --> MP_Comp
+    State_NodesEdges -- "Props" --> RP_Comp
+    AppComp -- "Props" --> LP_Comp
+    AppComp -- "Props" --> RP_Comp
     RP_Comp -- "Updates/Reads" --> RP_StateDynInputs
 
+    %% ===== Chat State Management =====
+    AppComp -- "Holds/Updates" --> ChatPanelState
+    ChatPanelState -- "Props" --> ChatPanelUI
 
-    %% ===== Flow 1: Load Agents (Revised) =====
+    %% ===== Flow 1: Load Agents (Unchanged) =====
     U_Load -- "Triggers fetchAgents() in" --> AppComp
     LP_Comp -- "Triggers onRefresh() --> fetchAgents() in" --> AppComp
     AppComp -- "axios.get('/api/agents')" --> API_Agents
-    API_Agents -- "Calls load base agents" --> FN_LoadBase
-    FN_LoadBase -- "A2A Call" --> Ext_Registry:::A2A
-    Ext_Registry -- "Base Agent List" --> FN_LoadBase
-    API_Agents -- "Calls load composites" --> FN_LoadComp
-    FN_LoadComp -- "Read Store" --> Ext_Composites:::Internal
-    Ext_Composites -- "Definitions" --> FN_LoadComp
-    API_Agents -- "Merge & Cache Results" --> Cache:::Internal
-    API_Agents -- "Merged Agent List Response" --> AppComp
-    AppComp -- "Updates State" --> State_Agents
-    %% AppComp passes props to LP_Comp (covered in props drilling)
-    LP_Comp -- "(React renders list from props)" --> LP_Comp
+    API_Agents -- "Calls" --> FN_LoadBase; API_Agents -- "Calls" --> FN_LoadComp
+    FN_LoadBase -- "Uses" --> FN_A2ACall:::A2A; FN_A2ACall -- "Calls" --> Ext_Registry
+    FN_LoadComp -- "Reads" --> Ext_Composites:::Internal
+    API_Agents -- "Updates" --> Cache:::Internal; API_Agents -- "Response" --> AppComp
+    AppComp -- "Updates" --> State_Agents
 
     %% ===== Flow 2: Build Workflow (Unchanged) =====
-    U_Drag -- "On Agent in" --> LP_Comp
-    LP_Comp -- "onDragStart()" --> U_Drop
-    U_Drop -- "Onto" --> MP_Comp
-    MP_Comp -- "onDrop() creates node" --> AppComp
-    AppComp -- "Updates" --> State_NodesEdges
-    State_NodesEdges -- "(ReactFlow renders node)" --> MP_Lib
-    U_Connect -- "On Handles in" --> MP_Lib
-    MP_Lib -- "onConnect() creates edge" --> AppComp
-    AppComp -- "Updates" --> State_NodesEdges
-    State_NodesEdges -- "(ReactFlow renders edge)" --> MP_Lib
+    U_Drag -- "On Agent in" --> LP_Comp; LP_Comp -- "onDragStart()" --> U_Drop
+    U_Drop -- "Onto" --> MP_Comp; MP_Comp -- "onDrop() creates node" --> AppComp
+    AppComp -- "Updates" --> State_NodesEdges; State_NodesEdges -- "(ReactFlow renders)" --> MP_Lib
+    U_Connect -- "On Handles in" --> MP_Lib; MP_Lib -- "onConnect() creates edge" --> AppComp
+    AppComp -- "Updates" --> State_NodesEdges; State_NodesEdges -- "(ReactFlow renders)" --> MP_Lib
 
-    %% ===== Flow 3: Run Workflow (Revised for Dynamic Inputs) =====
-    %% RP_Comp uses Nodes/Edges/Agents props to calculate dynamic inputs
-    State_NodesEdges -- "Used by (via props)" --> RP_Comp
-    State_Agents -- "Used by (via props)" --> RP_Comp
-
-    U_InputRun -- "Enters Data into Dynamic Inputs" --> RP_Comp
-    RP_Comp -- "Updates" --> RP_StateDynInputs
-
-    U_ClickRun -- "Triggers" --> RP_Comp
-    RP_Comp -- "handleRun() reads Nodes/Edges & RP_StateDynInputs" --> RP_Comp
-    RP_Comp -- "axios.post('/api/run_workflow')" --> API_Run
-    API_Run -- "Request Payload (w/ dynamic initial_inputs)" --> J[Parse Request]
-    J --> FN_Execute
-    FN_Execute -- "Uses Cache + Runs Logic" --> K{"Internal Execution / A2A Calls"}
-    K -- "Calls" --> FN_A2ACall
-    FN_A2ACall -- "A2A Call" --> Ext_AgentA:::A2A
-    Ext_AgentA -- "Response" --> FN_A2ACall
-    K -- "(Composite Execution)" --> FN_Execute:::Internal
-    K -- "Logs & Final State" --> API_Run
-    API_Run -- "WorkflowExecutionResponse" --> RP_Comp
-    RP_Comp -- "Updates State" --> RP_StateRun
-    RP_StateRun -- "(React renders logs)" --> RP_Comp
+    %% ===== Flow 3: Run Workflow (Unchanged) =====
+    U_InputRun -- "Enters Data" --> RP_Comp; RP_Comp -- "Updates" --> RP_StateDynInputs
+    U_ClickRun -- "Triggers" --> RP_Comp; RP_Comp -- "handleRun()" --> API_Run
+    API_Run -- "Payload" --> FN_Execute
+    FN_Execute -- "Orchestrates" --> FN_A2ACall:::A2A; FN_A2ACall -- "Calls" --> Ext_AgentA
+    API_Run -- "Response" --> RP_Comp; RP_Comp -- "Updates" --> RP_StateRun
 
     %% ===== Flow 4: Save Workflow (Unchanged) =====
-    U_InputSave -- "Enters Data" --> RP_Comp
-    U_ClickSave -- "Triggers" --> RP_Comp
-    RP_Comp -- "handleSaveWorkflow() reads Nodes/Edges/Name/Desc" --> RP_Comp
-    RP_Comp -- "axios.post('/api/register_composite')" --> API_Save
-    API_Save -- "Request Payload" --> L[Parse & Validate]
-    L --> FN_SaveComp
-    FN_SaveComp -- "Write to Store" --> Ext_Composites:::Internal
-    Ext_Composites -- "Confirm Write" --> FN_SaveComp
-    FN_SaveComp -- "Updates Cache" --> Cache:::Internal
-    API_Save -- "Success/Error Response" --> RP_Comp
-    RP_Comp -- "Updates State" --> RP_StateSave
-    RP_StateSave -- "(React renders message)" --> RP_Comp
+    U_InputSave -- "Enters Data" --> RP_Comp; U_ClickSave -- "Triggers" --> RP_Comp
+    RP_Comp -- "handleSaveWorkflow()" --> API_Save
+    API_Save -- "Payload" --> FN_SaveComp; FN_SaveComp -- "Writes" --> Ext_Composites:::Internal
+    API_Save -- "Response" --> RP_Comp; RP_Comp -- "Updates" --> RP_StateSave
+
+    %% ===== Flow 5: Load Sinks for Chat UI (New) =====
+    ChatPanelUI -- "(onMount) Calls /api/sinks" --> API_Sinks
+    API_Sinks -- "Calls list_sinks via" --> FN_A2ACall:::A2A
+    FN_A2ACall -- "Calls" --> Ext_SinkRegistryAgent
+    Ext_SinkRegistryAgent -- "Reads" --> Ext_SinkRegistryStore:::Internal
+    Ext_SinkRegistryAgent -- "Sink List" --> FN_A2ACall
+    API_Sinks -- "Sink List Response" --> ChatPanelUI
+    ChatPanelUI -- "Updates" --> ChatPanelState
+
+    %% ===== Flow 6: Chat Query Execution (New - Read Only PoC) =====
+    U_SelectSink -- "Selects Sink" --> ChatPanelUI
+    U_EnterChatQuery -- "Enters Query" --> ChatPanelUI
+    ChatPanelUI -- "handleSend() POSTs to" --> API_Chat
+    API_Chat -- "Calls Sink Registry via" --> FN_GetSinkDetails
+    FN_GetSinkDetails -- "Uses" --> FN_A2ACall:::A2A; FN_A2ACall -- "Calls get_sink_details" --> Ext_SinkRegistryAgent
+    Ext_SinkRegistryAgent -- "Reads" --> Ext_SinkRegistryStore:::Internal
+    Ext_SinkRegistryAgent -- "Sink Metadata" --> FN_A2ACall
+    FN_A2ACall -- "Sink Metadata" --> API_Chat
+    API_Chat -- "Calls Chat Agent via" --> FN_A2ACall:::A2A
+    FN_A2ACall -- "Calls process_message" --> Ext_ChatAgent
+    subgraph ChatAgentOrchestration [Chat Agent Orchestration]
+        direction LR
+        Ext_ChatAgent -- "1. Calls Planner" --> FN_A2ACall_Planner(FN_A2ACall):::A2A
+        FN_A2ACall_Planner -- "generate_query(query, sink_meta)" --> Ext_QueryPlannerAgent
+        Ext_QueryPlannerAgent -- "2. Returns Plan (query, target_method)" --> FN_A2ACall_Planner
+        FN_A2ACall_Planner -- "Plan" --> Ext_ChatAgent
+        Ext_ChatAgent -- "3. Calls Executor" --> FN_A2ACall_Executor(FN_A2ACall):::A2A
+        FN_A2ACall_Executor -- "execute_query(query)" --> Ext_ExecutorAgent
+        Ext_ExecutorAgent -- "4. Queries Actual Sink" --> Ext_DataSink_HR
+        Ext_DataSink_HR -- "5. Results" --> Ext_ExecutorAgent
+        Ext_ExecutorAgent -- "6. Results" --> FN_A2ACall_Executor
+        FN_A2ACall_Executor -- "Results" --> Ext_ChatAgent
+        Ext_ChatAgent -- "7. (Optional) Calls Analytics" --> FN_A2ACall_Analytics(FN_A2ACall):::A2A
+        FN_A2ACall_Analytics -- "generate_visualization(results)" --> Ext_AnalyticsAgent
+        Ext_AnalyticsAgent -- "8. Image/Error" --> FN_A2ACall_Analytics
+        FN_A2ACall_Analytics -- "Image/Error" --> Ext_ChatAgent
+        Ext_ChatAgent -- "9. Formats Final Response" --> Ext_ChatAgent
+    end
+    Ext_ChatAgent -- "Final Response" --> FN_A2ACall
+    API_Chat -- "Final Response" --> ChatPanelUI
+    ChatPanelUI -- "Updates" --> ChatPanelState; ChatPanelState -- "(React renders)" --> ChatPanelUI
+    ChatPanelUI -- "Displays Response" --> User
 
 ```
 

@@ -4,17 +4,20 @@ import axios from 'axios';
 import AgentsPanel from './components/AgentsPanel.jsx';
 import WorkflowBuilder from './components/WorkflowBuilder.jsx';
 import RunPanel from './components/RunPanel.jsx';
+import ChatPanel from './components/ChatPanel.jsx';
 
 // Main application layout using ReactFlowProvider to wrap components that need context
 export default function App() {
   // Lift state for nodes and edges here to share between WorkflowBuilder and RunPanel
   const [nodes, setNodes] = useState([]);
   const [edges, setEdges] = useState([]);
-
   //  Lifted state for agents ---
   const [agents, setAgents] = useState([]);
   const [isLoadingAgents, setIsLoadingAgents] = useState(false);
   const [agentError, setAgentError] = useState('');
+
+  // Add Chat State
+  const [chatSessionId] = useState(`session-${Date.now()}`); // Simple session ID for PoC
 
   // Function to fetch agents ---
   const fetchAgents = useCallback(async () => {
@@ -77,13 +80,21 @@ export default function App() {
 
         {/* Right Panel: Pass nodes, edges, AND agents state Run Workflow & Logs */}
         <div style={{ width: '30%', padding: 10, display: 'flex', flexDirection: 'column', overflowY: 'auto' }}>
-          <h2>Run & Logs</h2>
-          {/* Pass nodes and edges state down to RunPanel */}
-          <RunPanel 
-            nodes={nodes}
-            edges={edges}
-            agents={agents}
-          />
+          {/* Keep Run/Save Panel */}
+          <div style={{flexShrink: 0}}> {/* Prevent RunPanel from shrinking excessively */}
+            <h2>Run & Save</h2>
+            {/* Pass nodes and edges state down to RunPanel */}
+            <RunPanel 
+              nodes={nodes}
+              edges={edges}
+              agents={agents}
+            />
+          </div>
+          {/* Add Chat Panel Below */}
+          <div style={{marginTop: '20px', flexGrow: 1, minHeight: '300px'}}> {/* Allow chat to grow */}
+            <h2>Chat Query</h2>
+            <ChatPanel sessionId={chatSessionId} />
+          </div>
         </div>
       </div>
     </ReactFlowProvider>
